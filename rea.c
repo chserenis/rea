@@ -9,16 +9,20 @@
 #include <sys/select.h>
 #include <signal.h>
 #include <netdb.h>
+#include <sys/epoll.h>
 #include "rea.h"
 
 fd_set rfds;
 fd_set wfds;
 Client *clients[MAX_CLIENTS];
 
+#define MAX_EVENTS 100
+
 int main(int argc, char *argv[])
 {
-	int status, maxfd, i, fd, added;
+	int status, maxfd, i, fd, added, epfd;
 	Client *c;
+
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage: %s <port>\n", argv[0]);
@@ -26,6 +30,42 @@ int main(int argc, char *argv[])
 	}
 
 	setupAndListen(argv[1]);
+
+	// epoll
+	//
+	struct epoll_event ev;
+	struct epoll_event evs[MAX_EVENTS];
+	int nfds;
+	epfd = epoll_create1(0);
+	if (epfd == -1) {
+		err(EXIT_FAILURE, "epoll_create error");
+	}
+
+	ev.events = EPOLLIN;
+	ev.data.fd = server->fd;
+
+	status = epoll_ctl(epfd, EPOLL_CTL_ADD, server->fd, &ev);
+	if (status == -1) {
+		err(EXIT_FAILURE, "epoll_ctl error");
+	}
+
+	//epoll wait
+	for (;;) {
+		nfds = epoll_wait(epfd, evs, MAX_EVENTS, -1);
+		fd = accept4(server->fd, server->addr->ai_addr,
+				&(server->addr->ai_addrlen), SOCK_NONBLOCK);
+		// handle accept4 error?
+		//
+		for (i = 0; i < nfds; i++) {
+			if (evs[i].data.) {
+			}
+		}
+
+
+
+		printf("foo! %d\n", nfds);
+	}
+	
 
 	while(1) {
 		FD_ZERO(&rfds);
